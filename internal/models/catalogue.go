@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -8,30 +9,32 @@ import (
 	"be20250107/utils/database"
 )
 
+type Specifications struct {
+	ScreenSize  string `json:"screen_size"`
+	FrontCamera string `json:"front_camera"`
+	RearCamera  string `json:"rear_camera"`
+	Ram         string `json:"ram"`
+	Storage     string `json:"storage"`
+	Battery     string `json:"battery"`
+	OS          string `json:"os"`
+}
 type Catalogue struct {
-	ID             int        `db:"id" json:"id"`
-	Name           string     `db:"name" json:"name"`
-	BrandID        int        `db:"brand_id" json:"brand_id"`
-	BrandName      string     `db:"brand_name" json:"brand_name"`
-	CategoryID     int        `db:"category_id" json:"category_id"`
-	CategoryName   string     `db:"category_name" json:"category_name"`
-	ScreenSize     string     `db:"screen_size" json:"screen_size"`
-	FrontCamera    string     `db:"front_camera" json:"front_camera"`
-	RearCamera     string     `db:"rear_camera" json:"rear_camera"`
-	Ram            string     `db:"ram" json:"ram"`
-	Storage        string     `db:"storage" json:"storage"`
-	Battery        string     `db:"battery" json:"battery"`
-	OS             string     `db:"os" json:"os"`
-	Specifications string     `db:"specifications" json:"specifications"`
-	Price          float64    `db:"price" json:"price"`
-	CreatedAt      time.Time  `db:"created_at" json:"created_at"`
-	UpdatedAt      time.Time  `db:"updated_at" json:"updated_at"`
-	DeletedAt      *time.Time `db:"deleted_at" json:"deleted_at"`
-	PublishedAt    *time.Time `db:"published_at" json:"published_at"`
-	CreatedBy      string     `db:"created_by" json:"created_by"`
-	UpdatedBy      string     `db:"updated_by" json:"updated_by"`
-	DeletedBy      *string    `db:"deleted_by" json:"deleted_by"`
-	Categories     []Category `json:"categories"`
+	ID             int            `db:"id" json:"id"`
+	Name           string         `db:"name" json:"name"`
+	BrandID        int            `db:"brand_id" json:"brand_id"`
+	BrandName      string         `db:"brand_name" json:"brand_name"`
+	CategoryID     int            `db:"category_id" json:"category_id"`
+	CategoryName   string         `db:"category_name" json:"category_name"`
+	Specifications Specifications `db:"specifications" json:"specifications"`
+	Price          float64        `db:"price" json:"price"`
+	CreatedAt      time.Time      `db:"created_at" json:"created_at"`
+	UpdatedAt      time.Time      `db:"updated_at" json:"updated_at"`
+	DeletedAt      *time.Time     `db:"deleted_at" json:"deleted_at"`
+	PublishedAt    *time.Time     `db:"published_at" json:"published_at"`
+	CreatedBy      string         `db:"created_by" json:"created_by"`
+	UpdatedBy      string         `db:"updated_by" json:"updated_by"`
+	DeletedBy      *string        `db:"deleted_by" json:"deleted_by"`
+	Categories     []Category     `json:"categories"`
 }
 
 type Installment struct {
@@ -153,37 +156,23 @@ func (p *Catalogue) Bind(r *http.Request) error {
 	return nil
 }
 func (p *Catalogue) Insert(tx database.TxQueryer) error {
+	// Serialize Specifications
+	specs, err := json.Marshal(p.Specifications)
+	if err != nil {
+		return fmt.Errorf("[Catalogue.Insert][Marshal Specifications]%w", err)
+	}
 	// Step 1: Insert into catalogues table and get the inserted ID
-	query := `
-    INSERT INTO catalogues (name, brand_id, category_id, screen_size, front_camera, rear_camera, ram, storage, battery, os, specifications, price, created_by, updated_by) 
-    VALUES (:name, :brand_id, :category_id, :screen_size, :front_camera, :rear_camera, :ram, :storage, :battery, :os, :specifications, :price, :created_by, :updated_by);
-    `
-	result, err := tx.NamedExec(query, map[string]interface{}{
-		"name":           p.Name,
-		"brand_id":       p.BrandID,
-		"category_id":    p.CategoryID,
-		"screen_size":    p.ScreenSize,
-		"front_camera":   p.FrontCamera,
-		"rear_camera":    p.RearCamera,
-		"ram":            p.Ram,
-		"storage":        p.Storage,
-		"battery":        p.Battery,
-		"os":             p.OS,
-		"specifications": p.Specifications,
-		"price":          p.Price,
-		"created_by":     p.CreatedBy,
-		"updated_by":     p.UpdatedBy,
-	})
+	query := ` 
+		INSERT INTO catalogues (name, brand_id, category_id, specifications, price, created_by, updated_by) VALUES (:name, :brand_id, :category_id, :specifications, :price, :created_by, :updated_by); `
+	result, err := tx.NamedExec(query, map[string]interface{}{"name": p.Name, "brand_id": p.BrandID, "category_id": p.CategoryID, "specifications": string(specs), "price": p.Price, "created_by": p.CreatedBy, "updated_by": p.UpdatedBy})
 	if err != nil {
 		return fmt.Errorf("[Catalogue.Insert][NamedExec]%w", err)
 	}
-
 	catalogueID, err := result.LastInsertId()
 	if err != nil {
 		return fmt.Errorf("[Catalogue.Insert][LastInsertId]%w", err)
 	}
 	p.ID = int(catalogueID)
-
 	// Step 2: Insert into catalogues_categories table
 	for _, category := range p.Categories {
 		_, err := tx.Exec("INSERT INTO catalogues_categories (cata_id, cate_id) VALUES (?, ?)", p.ID, category.ID)
@@ -191,14 +180,19 @@ func (p *Catalogue) Insert(tx database.TxQueryer) error {
 			return fmt.Errorf("[Catalogue.Insert][InsertCategory]%w", err)
 		}
 	}
-
 	return nil
 }
 
 func (p *Catalogue) Update(tx database.TxQueryer) error {
+	// Serialize Specifications
+	specs, err := json.Marshal(p.Specifications)
+	if err != nil {
+		return fmt.Errorf("[Catalogue.Update][Marshal Specifications]%w", err)
+	}
+
 	// Get the old price
 	var oldPrice float64
-	err := tx.Get(&oldPrice, "SELECT price FROM catalogues WHERE id=?", p.ID)
+	err = tx.Get(&oldPrice, "SELECT price FROM catalogues WHERE id=?", p.ID)
 	if err != nil {
 		return fmt.Errorf("[Catalogue.Update][Get old price]%w", err)
 	}
@@ -220,7 +214,14 @@ func (p *Catalogue) Update(tx database.TxQueryer) error {
     UPDATE catalogues SET name = :name, brand_id = :brand_id, specifications = :specifications, price = :price, published_at = :published_at, updated_at = CURRENT_TIMESTAMP
     WHERE id = :id;
   `
-	_, err = tx.NamedExec(query, p)
+	_, err = tx.NamedExec(query, map[string]interface{}{
+		"id":             p.ID,
+		"name":           p.Name,
+		"brand_id":       p.BrandID,
+		"specifications": string(specs),
+		"price":          p.Price,
+		"published_at":   p.PublishedAt,
+	})
 	if err != nil {
 		return fmt.Errorf("[Catalogue.Update][NamedExec]%w", err)
 	}
@@ -250,11 +251,11 @@ func (p *Catalogue) Delete(tx database.TxQueryer) error {
 func GetCatalogues(db database.Queryer, limit, offset int, sortBy, order, filterBy, filterValue string) ([]Catalogue, int, error) {
 	Catalogues := []Catalogue{}
 	baseQuery := `
-	   SELECT catalogues.id, catalogues.name, catalogues.brand_id, brands.name AS brand_name, catalogues.specifications, catalogues.price, catalogues.created_at, catalogues.updated_at, catalogues.deleted_at, catalogues.published_at 
-	   FROM catalogues 
-	   JOIN brands ON catalogues.brand_id = brands.id
-	   WHERE catalogues.deleted_at IS NULL
-	   `
+       SELECT catalogues.id, catalogues.name, catalogues.brand_id, brands.name AS brand_name, catalogues.specifications, catalogues.price, catalogues.created_at, catalogues.updated_at, catalogues.deleted_at, catalogues.published_at 
+       FROM catalogues 
+       JOIN brands ON catalogues.brand_id = brands.id
+       WHERE catalogues.deleted_at IS NULL
+       `
 	filterQuery := ""
 	if filterBy != "" && filterValue != "" {
 		filterQuery = fmt.Sprintf("AND %s LIKE '%%%s%%'", filterBy, filterValue)
@@ -277,33 +278,59 @@ func GetCatalogues(db database.Queryer, limit, offset int, sortBy, order, filter
 		return nil, 0, fmt.Errorf("[GetCatalogues][Count]%w", err)
 	}
 
-	err = db.Select(&Catalogues, query)
+	rows, err := db.Query(query)
 	if err != nil {
-		return nil, 0, fmt.Errorf("[GetCatalogues][Select]%w", err)
+		return nil, 0, fmt.Errorf("[GetCatalogues][Query]%w", err)
 	}
+	defer rows.Close()
 
-	for i, Catalogue := range Catalogues {
-		categories, err := GetCategoriesForCatalogue(db, Catalogue.ID)
+	for rows.Next() {
+		var c Catalogue
+		var specifications string
+		err := rows.Scan(&c.ID, &c.Name, &c.BrandID, &c.BrandName, &specifications, &c.Price, &c.CreatedAt, &c.UpdatedAt, &c.DeletedAt, &c.PublishedAt)
+		if err != nil {
+			return nil, 0, fmt.Errorf("[GetCatalogues][Scan]%w", err)
+		}
+
+		// Unmarshal the JSON stored in the 'specifications' field.
+		err = json.Unmarshal([]byte(specifications), &c.Specifications)
+		if err != nil {
+			return nil, 0, fmt.Errorf("[GetCatalogues][Unmarshal Specifications]%w", err)
+		}
+
+		categories, err := GetCategoriesForCatalogue(db, c.ID)
 		if err != nil {
 			return nil, 0, fmt.Errorf("[GetCatalogues][GetCategoriesForCatalogue]%w", err)
 		}
-		Catalogues[i].Categories = categories
+		c.Categories = categories
+
+		Catalogues = append(Catalogues, c)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("[GetCatalogues][Rows]%w", err)
 	}
 
 	return Catalogues, totalCount, nil
 }
-
 func GetCatalogue(db database.Queryer, id int) (Catalogue, error) {
 	catalogue := Catalogue{}
+	var specifications string
 	query := `
     SELECT catalogues.id, catalogues.name, catalogues.brand_id, brands.name AS brand_name, catalogues.specifications, catalogues.price, catalogues.created_at, catalogues.updated_at, catalogues.deleted_at, catalogues.published_at 
     FROM catalogues 
     JOIN brands ON catalogues.brand_id = brands.id 
     WHERE catalogues.id = ? AND catalogues.deleted_at IS NULL;
     `
-	err := db.Get(&catalogue, query, id)
+	err := db.QueryRow(query, id).Scan(&catalogue.ID, &catalogue.Name, &catalogue.BrandID, &catalogue.BrandName, &specifications, &catalogue.Price, &catalogue.CreatedAt, &catalogue.UpdatedAt, &catalogue.DeletedAt, &catalogue.PublishedAt)
 	if err != nil {
-		return Catalogue{}, fmt.Errorf("[GetCatalogue][Get]%w", err)
+		return Catalogue{}, fmt.Errorf("[GetCatalogue][Scan]%w", err)
+	}
+
+	// Unmarshal the JSON stored in the 'specifications' field.
+	err = json.Unmarshal([]byte(specifications), &catalogue.Specifications)
+	if err != nil {
+		return Catalogue{}, fmt.Errorf("[GetCatalogue][Unmarshal Specifications]%w", err)
 	}
 
 	categories, err := GetCategoriesForCatalogue(db, catalogue.ID)
