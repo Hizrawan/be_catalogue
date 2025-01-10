@@ -17,7 +17,10 @@ type Specifications struct {
 	Storage     string `json:"storage"`
 	Battery     string `json:"battery"`
 	OS          string `json:"os"`
+	ProductCode string `json:"product_code"`
+	Color       string `json:"color"`
 }
+
 type Catalogue struct {
 	ID             int            `db:"id" json:"id"`
 	Name           string         `db:"name" json:"name"`
