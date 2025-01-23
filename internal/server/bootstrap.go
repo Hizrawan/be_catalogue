@@ -32,6 +32,7 @@ func (s *Server) RegisterRoutes() []RouteRegister {
 		routes.RegisterAccountRoutes,
 		routes.RegisterAuthRoutes,
 		routes.RegisterCatalogueRoutes,
+		routes.RegisterGeneralRoutes,
 	}
 }
 
