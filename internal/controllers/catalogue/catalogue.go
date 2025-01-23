@@ -88,13 +88,22 @@ func (c *CatalogueController) CreateCatalogue(w http.ResponseWriter, r *http.Req
 			return
 		}
 
-		// Extract JSON payload from form data
-		CatalogueData := r.FormValue("Catalogue")
-		if err := json.Unmarshal([]byte(CatalogueData), &Catalogue); err != nil {
-			log.Printf("Error unmarshaling form data to JSON: %v", err)
-			http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		// Extract form values and populate the Catalogue struct
+		Catalogue.Name = r.FormValue("name")
+		Catalogue.BrandID, _ = strconv.Atoi(r.FormValue("brand_id"))
+		Catalogue.CategoryID, _ = strconv.Atoi(r.FormValue("category_id"))
+		// Unmarshal specifications JSON string to map
+		specs := r.FormValue("specifications")
+		if err := json.Unmarshal([]byte(specs), &Catalogue.Specifications); err != nil {
+			http.Error(w, "Invalid specifications format", http.StatusBadRequest)
+			log.Printf("Error unmarshaling specifications: %v", err)
 			return
 		}
+		// json.Unmarshal([]byte(r.FormValue("specifications")), &Catalogue.Specifications)
+		Catalogue.Price, _ = strconv.ParseFloat(r.FormValue("price"), 64)
+		Catalogue.CreatedBy = r.FormValue("created_by")
+		Catalogue.UpdatedBy = r.FormValue("updated_by")
+
 	} else if r.Header.Get("Content-Type") == "application/json" {
 		// Handle JSON payload directly
 		if err := render.Bind(r, &Catalogue); err != nil {
@@ -138,9 +147,22 @@ func (c *CatalogueController) CreateCatalogue(w http.ResponseWriter, r *http.Req
 		log.Printf("Failed to create Catalogue record: %v", err)
 		return
 	}
+	// Send the updated response
+	response := struct {
+		Ok      bool        `json:"ok"`
+		Message string      `json:"message"`
+		Data    interface{} `json:"data"`
+	}{
+		Ok:      true,
+		Message: "Catalogue created successfully",
+		Data:    Catalogue,
+	}
 
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	render.JSON(w, r, Catalogue)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("Error encoding response: %v", err)
+	}
 }
 
 // UpdateCatalogue updates an existing Catalogue record by ID and records price changes
