@@ -1,11 +1,13 @@
 package controller
 
 import (
-	"net/http"
-	"strconv"
-
 	"be20250107/internal/app"
 	controllers "be20250107/internal/controllers"
+	"encoding/json"
+	"log"
+	"net/http"
+	"strconv"
+	"strings"
 
 	"be20250107/internal/models"
 
@@ -72,23 +74,68 @@ func (c *CatalogueController) GetCatalogue(w http.ResponseWriter, r *http.Reques
 
 // CreateCatalogue creates a new Catalogue record and inserts installment values
 func (c *CatalogueController) CreateCatalogue(w http.ResponseWriter, r *http.Request) {
+	// Log request headers
+	// log.Printf("Request Headers: %v", r.Header)
+
 	var Catalogue models.Catalogue
-	if err := render.Bind(r, &Catalogue); err != nil {
-		http.Error(w, "Invalid request payload: "+err.Error(), http.StatusBadRequest)
+
+	// Check if the content type is multipart form data
+	if strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data") {
+		// Parse multipart form data
+		if err := r.ParseMultipartForm(10 << 20); err != nil {
+
+			http.Error(w, "Invalid request payload", http.StatusBadRequest)
+			return
+		}
+
+		// Extract JSON payload from form data
+		CatalogueData := r.FormValue("Catalogue")
+		if err := json.Unmarshal([]byte(CatalogueData), &Catalogue); err != nil {
+			log.Printf("Error unmarshaling form data to JSON: %v", err)
+			http.Error(w, "Invalid request payload", http.StatusBadRequest)
+			return
+		}
+	} else if r.Header.Get("Content-Type") == "application/json" {
+		// Handle JSON payload directly
+		if err := render.Bind(r, &Catalogue); err != nil {
+			log.Printf("Error binding request: %v", err)
+			http.Error(w, "Invalid request payload: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+	} else {
+		// Unsupported content type
+		http.Error(w, "Unsupported content type", http.StatusUnsupportedMediaType)
 		return
 	}
 
-	tx := c.App.DB.MustBegin()
-	err := Catalogue.Insert(tx)
+	// Start a new transaction
+	tx, err := c.App.DB.Beginx()
 	if err != nil {
-		tx.Rollback()
-		http.Error(w, "Failed to create Catalogue record: "+err.Error(), http.StatusInternalServerError)
+		log.Printf("Error parsing multipart form: %v", err)
+		http.Error(w, "Server error", http.StatusInternalServerError)
+		log.Printf("Failed to begin transaction: %v", err)
 		return
 	}
 
-	err = tx.Commit()
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+			log.Printf("Transaction rolled back: %v", err)
+		} else {
+			err = tx.Commit()
+			if err != nil {
+				http.Error(w, "Server error", http.StatusInternalServerError)
+				log.Printf("Failed to commit transaction: %v", err)
+				return
+			}
+		}
+	}()
+
+	// Insert catalogue with image upload handling
+	err = Catalogue.Insert(tx, r)
 	if err != nil {
-		http.Error(w, "Failed to commit transaction: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Server error", http.StatusInternalServerError)
+		log.Printf("Failed to create Catalogue record: %v", err)
 		return
 	}
 

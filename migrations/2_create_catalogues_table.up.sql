@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS catalogues (
     category_id INT,
     specifications JSON NOT NULL,
     price DECIMAL(10, 2) NOT NULL,
+    image_url VARCHAR(255) NULL,  -- Add this line
     published_at TIMESTAMP NULL DEFAULT NULL,
     created_by VARCHAR(255) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

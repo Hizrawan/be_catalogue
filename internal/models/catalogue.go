@@ -1,12 +1,15 @@
 package models
 
 import (
+	"be20250107/utils/database"
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"time"
-
-	"be20250107/utils/database"
 )
 
 type Specifications struct {
@@ -29,6 +32,7 @@ type Catalogue struct {
 	CategoryID     int            `db:"category_id" json:"category_id"`
 	CategoryName   string         `db:"category_name" json:"category_name"`
 	Specifications Specifications `db:"specifications" json:"specifications"`
+	ImageURL       string         `db:"image_url" json:"image_url"`
 	Price          float64        `db:"price" json:"price"`
 	CreatedAt      time.Time      `db:"created_at" json:"created_at"`
 	UpdatedAt      time.Time      `db:"updated_at" json:"updated_at"`
@@ -37,7 +41,7 @@ type Catalogue struct {
 	CreatedBy      string         `db:"created_by" json:"created_by"`
 	UpdatedBy      string         `db:"updated_by" json:"updated_by"`
 	DeletedBy      *string        `db:"deleted_by" json:"deleted_by"`
-	Categories     []Category     `json:"categories"`
+	Tags           []Tag          `json:"categories"`
 }
 
 type Installment struct {
@@ -64,13 +68,123 @@ type Brand struct {
 	CreatedAt time.Time `db:"created_at" json:"created_at"`
 	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`
 }
-type Category struct {
+type Tag struct {
 	ID          int        `db:"id" json:"id"`
 	Name        string     `db:"name" json:"name"`
 	Description string     `db:"description" json:"description"`
 	CreatedAt   time.Time  `db:"created_at" json:"created_at"`
 	UpdatedAt   time.Time  `db:"updated_at" json:"updated_at"`
 	DeletedAt   *time.Time `db:"deleted_at" json:"deleted_at"`
+}
+
+const maxFileSize = 100 * 1024 * 1024
+
+func (p *Catalogue) Insert(tx database.TxQueryer, r *http.Request) error {
+	// Serialize Specifications
+	specs, err := json.Marshal(p.Specifications)
+	if err != nil {
+		return fmt.Errorf("[Catalogue.Insert][Marshal Specifications]%w", err)
+	}
+
+	// Handle file upload
+	filePath, err := uploadFile(r)
+	if err != nil {
+		return err
+	}
+
+	// Step 1: Insert into catalogues table and get the inserted ID
+	query := `
+        INSERT INTO catalogues (name, brand_id, category_id, specifications, price, image_url, created_by, updated_by) VALUES (:name, :brand_id, :category_id, :specifications, :price, :image_url, :created_by, :updated_by);`
+	result, err := tx.NamedExec(query, map[string]interface{}{
+		"name":           p.Name,
+		"brand_id":       p.BrandID,
+		"category_id":    p.CategoryID,
+		"specifications": string(specs),
+		"price":          p.Price,
+		"image_url":      filePath,
+		"created_by":     p.CreatedBy,
+		"updated_by":     p.UpdatedBy,
+	})
+	if err != nil {
+		return fmt.Errorf("[Catalogue.Insert][NamedExec]%w", err)
+	}
+	catalogueID, err := result.LastInsertId()
+	if err != nil {
+		return fmt.Errorf("[Catalogue.Insert][LastInsertId]%w", err)
+	}
+	p.ID = int(catalogueID)
+
+	// Step 2: Insert into catalogues_categories table
+	for _, category := range p.Tags {
+		_, err := tx.Exec("INSERT INTO catalogues_categories (cata_id, cate_id) VALUES (?, ?)", p.ID, category.ID)
+		if err != nil {
+			return fmt.Errorf("[Catalogue.Insert][InsertCategory]%w", err)
+		}
+	}
+	return nil
+}
+func uploadFile(r *http.Request) (string, error) {
+	// Parse the multipart form
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		log.Printf("Error parsing multipart form: %v", err)
+		return "", fmt.Errorf("error parsing form: %v", err)
+	}
+
+	// Log the form values
+	for key, values := range r.MultipartForm.Value {
+		log.Printf("Form Value: %s = %s", key, values)
+	}
+
+	// Retrieve the file from form data
+	file, handler, err := r.FormFile("image")
+	if err != nil {
+		log.Printf("Error retrieving the file: %v", err)
+		return "", fmt.Errorf("error retrieving the file: %v", err)
+	}
+	defer file.Close()
+
+	// Log file details
+	log.Printf("Uploaded File: %s", handler.Filename)
+	log.Printf("File Size: %d", handler.Size)
+	log.Printf("MIME Header: %v", handler.Header)
+
+	// Check file type
+	fileType := handler.Header.Get("Content-Type")
+	if fileType != "image/jpeg" && fileType != "image/png" && fileType != "image/gif" {
+		log.Printf("Invalid file type: %s", fileType)
+		return "", fmt.Errorf("invalid file type: %s", fileType)
+	}
+
+	// Check file size
+	if handler.Size > maxFileSize {
+		log.Printf("File size exceeds limit: %d", handler.Size)
+		return "", fmt.Errorf("file size exceeds limit of %d bytes", maxFileSize)
+	}
+
+	// Create uploads directory if it doesn't exist
+	tempDir := "uploads"
+	if err := os.MkdirAll(tempDir, os.ModePerm); err != nil {
+		log.Printf("Error creating upload directory: %v", err)
+		return "", fmt.Errorf("error creating upload directory: %v", err)
+	}
+
+	// Create a temporary file
+	tempFile, err := os.CreateTemp(tempDir, fmt.Sprintf("upload-*.%s", filepath.Ext(handler.Filename)))
+	if err != nil {
+		log.Printf("Error creating temp file: %v", err)
+		return "", fmt.Errorf("error creating temp file: %v", err)
+	}
+	defer tempFile.Close()
+
+	// Copy the file content to the temporary file
+	if _, err := io.Copy(tempFile, file); err != nil {
+		log.Printf("Error saving file: %v", err)
+		return "", fmt.Errorf("error saving file: %v", err)
+	}
+
+	// Log the file location
+	log.Printf("Uploaded File Location: %s", tempFile.Name())
+	return tempFile.Name(), nil
 }
 
 func (b *Brand) Bind(r *http.Request) error { return nil }
@@ -119,8 +233,8 @@ func GetBrand(db database.Queryer, id int) (Brand, error) {
 	err := db.Get(&brand, "SELECT * FROM brands WHERE id=?;", id)
 	return brand, err
 }
-func (c *Category) Bind(r *http.Request) error { return nil }
-func (c *Category) Insert(tx database.TxQueryer) error {
+func (c *Tag) Bind(r *http.Request) error { return nil }
+func (c *Tag) Insert(tx database.TxQueryer) error {
 	query := `INSERT INTO categories (name, description) VALUES (:name, :description);`
 	_, err := tx.NamedExec(query, c)
 	if err != nil {
@@ -134,7 +248,8 @@ func (c *Category) Insert(tx database.TxQueryer) error {
 	c.ID = categoryID
 	return nil
 }
-func (c *Category) Update(tx database.TxQueryer) error {
+
+func (c *Tag) Update(tx database.TxQueryer) error {
 	query := `UPDATE categories SET name = :name, description = :description, updated_at = CURRENT_TIMESTAMP WHERE id = :id;`
 	_, err := tx.NamedExec(query, c)
 	if err != nil {
@@ -142,7 +257,7 @@ func (c *Category) Update(tx database.TxQueryer) error {
 	}
 	return nil
 }
-func (c *Category) Delete(tx database.TxQueryer) error {
+func (c *Tag) Delete(tx database.TxQueryer) error {
 	query := "UPDATE categories SET deleted_at = CURRENT_TIMESTAMP WHERE id = :id;"
 	_, err := tx.NamedExec(query, c)
 	if err != nil {
@@ -150,42 +265,14 @@ func (c *Category) Delete(tx database.TxQueryer) error {
 	}
 	return nil
 }
-func GetCategories(db database.Queryer) ([]Category, error) {
-	categories := []Category{}
+func GetCategories(db database.Queryer) ([]Tag, error) {
+	categories := []Tag{}
 	err := db.Select(&categories, "SELECT * FROM categories WHERE deleted_at IS NULL;")
 	return categories, err
 }
 func (p *Catalogue) Bind(r *http.Request) error {
 	return nil
 }
-func (p *Catalogue) Insert(tx database.TxQueryer) error {
-	// Serialize Specifications
-	specs, err := json.Marshal(p.Specifications)
-	if err != nil {
-		return fmt.Errorf("[Catalogue.Insert][Marshal Specifications]%w", err)
-	}
-	// Step 1: Insert into catalogues table and get the inserted ID
-	query := ` 
-		INSERT INTO catalogues (name, brand_id, category_id, specifications, price, created_by, updated_by) VALUES (:name, :brand_id, :category_id, :specifications, :price, :created_by, :updated_by); `
-	result, err := tx.NamedExec(query, map[string]interface{}{"name": p.Name, "brand_id": p.BrandID, "category_id": p.CategoryID, "specifications": string(specs), "price": p.Price, "created_by": p.CreatedBy, "updated_by": p.UpdatedBy})
-	if err != nil {
-		return fmt.Errorf("[Catalogue.Insert][NamedExec]%w", err)
-	}
-	catalogueID, err := result.LastInsertId()
-	if err != nil {
-		return fmt.Errorf("[Catalogue.Insert][LastInsertId]%w", err)
-	}
-	p.ID = int(catalogueID)
-	// Step 2: Insert into catalogues_categories table
-	for _, category := range p.Categories {
-		_, err := tx.Exec("INSERT INTO catalogues_categories (cata_id, cate_id) VALUES (?, ?)", p.ID, category.ID)
-		if err != nil {
-			return fmt.Errorf("[Catalogue.Insert][InsertCategory]%w", err)
-		}
-	}
-	return nil
-}
-
 func (p *Catalogue) Update(tx database.TxQueryer) error {
 	// Serialize Specifications
 	specs, err := json.Marshal(p.Specifications)
@@ -234,7 +321,7 @@ func (p *Catalogue) Update(tx database.TxQueryer) error {
 		return fmt.Errorf("[Catalogue.Update][DeleteCategories]%w", err)
 	}
 	// Insert updated categories
-	for _, tag := range p.Categories {
+	for _, tag := range p.Tags {
 		_, err := tx.Exec("INSERT INTO catalogues_categories (cata_id, cate_id) VALUES (?, ?)", p.ID, tag.ID)
 		if err != nil {
 			return fmt.Errorf("[Catalogue.Update][InsertTag]%w", err)
@@ -305,7 +392,7 @@ func GetCatalogues(db database.Queryer, limit, offset int, sortBy, order, filter
 		if err != nil {
 			return nil, 0, fmt.Errorf("[GetCatalogues][GetCategoriesForCatalogue]%w", err)
 		}
-		c.Categories = categories
+		c.Tags = categories
 
 		Catalogues = append(Catalogues, c)
 	}
@@ -340,13 +427,13 @@ func GetCatalogue(db database.Queryer, id int) (Catalogue, error) {
 	if err != nil {
 		return Catalogue{}, fmt.Errorf("[GetCatalogue][GetCategoriesForCatalogue]%w", err)
 	}
-	catalogue.Categories = categories
+	catalogue.Tags = categories
 
 	return catalogue, nil
 }
 
-func GetCategoriesForCatalogue(db database.Queryer, CatalogueID int) ([]Category, error) {
-	var categories []Category
+func GetCategoriesForCatalogue(db database.Queryer, CatalogueID int) ([]Tag, error) {
+	var categories []Tag
 
 	query := `
     SELECT t.id, t.name

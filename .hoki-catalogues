@@ -1,0 +1,204 @@
+private:
+  signing_key: '{"alg":"RS256","d":"nNeZHnp0gq1Zc2Y9Bp4AoUzkZ1CqFDr0CTUVneESMM9yGeZ1zNNr-SgVy9uOv5trOG01fNwd2kTUCYVRtdpSIQZrzl9hdHWo52evhaCwqVCct8i9IqcinaKMSPmB7QuHxAaRtOCh-CswJjF8VAq1ioz572llLcaqVWzkBdnwjWQalH-SqbZy3BXzBGeKwrJeGgeMh42wq3rr4q2w4y5dxIx5GvGjzFAFm1zvpEFEVh1q8anrQO7qLdaanvSDafNl4P8szJAnVu2XnXAeMD_3SIDvF4rzkvn98ABx3NfDihtx9qbAnjA56xFnHO0lCxDZmLFfsWXIpZqCAQ4K2wzfgQ","dp":"rBbLxqZuQVUX82Qf4r9fuCCFJz5cOjRTxBfUNjWUbhy1FU1jYiWes8p7-pvH60fU47qxBI0_itX0OBHshgzJJ0wzkY7hVvFpdHFVCMlJnyPr67kWOSD_0q-0UUoMDR3J1xvsksk6hYHVtEPVdPCZhxZ0GFFVhSuGS5miUr0GsRc","dq":"lMCXXkdlm4e4OxFv5nMKg2880ZDVCg491nX3U_IxFjBxm45Ra3U5IyHRLA5uJRyp18mz0DbUdX_ehK3lwsUNB67Je7Kh85h4Ymg9hrKJfGAQjXPJbvzB8doZ23n_AQE1LjPsbZxeb7UKxMSFa1bwO1-e2BHkWoMKr4H0zmDsWoE","e":"AQAB","kid":"sig_01H315CDK3283GKSSA7XSTH97Y","kty":"RSA","n":"yFulO6SUMANBDEI_tMQ4s9NrD4dzEWe3uegXm3nFN7iZI38T7mvlnbAlOY5U6j1XOo8xBtbZ8YhSgXnvlDJwPa29WRoIIgHVSADLBKWO8oxl0TEC0PiQ-OKYAHfQP7L6n6P5Sm1N6Yp87POVJIG6GNALPUS1sLqLlvKMnu4aX6XVi5tF5DNTiIJuDVUg_v-PcXKE30teaduCKyF-1VirtRt0c2adXKULX0Fqcng-w0_cQUmpUkmhn32q0F_mGOL1wmpmZvll29X3OSA4SC4333ihdWFLvamVxyL8X1XWfbbUMTSn6XrDnC8nHkbhAR5P04lUx34Qev_CKuqv_KDPbw","p":"4bjVK0pNQJG4rAJqJQosNshZWqjMiVXgVAEWd5VcZv1rMMtZMbLk9bZ5sNbgLC89huLyrg9R6-R4o9z_qrWQybEZ6KOEzB4GuK23t5B7a00J3w99AvEsDl02o00CXjDyBbd6qDywwdubtiAx-BwmwNIqUySD1RxV-CPavkGEey8","q":"4zvTpVczzMM3wtv27enVAQZcx_R8tJuGicRW_Ni0-NxNvT1iHxelKL-8fNRAIavPYgM-ZDD1P9Bh-5xXH5tGPKwZB2NQafEzlbGwAsTkIJDQmDXjWcUfUaRYAxQBKeDXSfyOBp3FJB8jnEYXLOL2KwikQpja_pmftNenBVIu38E","qi":"Wpgl-GCR91whyT9yzbyBaDZum-rasttAEIgKlfRR6iIbrH0hai5_IjDoTl6MK_ShB2IK_Ng3nqXqE9__bvxRkY6DVLtSD90mLm9OxrThpsmvOrVKb45OTEBxXr6mYIUorvekKLxee9zWUWTnU2TWVz_za7QVFxdbLfUJm8am2sI","use":"sig"}'
+  service:
+    maps:
+      key: ''
+    scribe:
+      base_url: "http://127.0.0.1:9001"
+      access_token: ""
+    meilisearch:
+      base_url: "http://127.0.0.1:7700"
+      master_key: ""
+    sinopac:
+      base_url: "https://api.sinopac.com/cibapi/v1/ApiGateway/"
+      key_id: 
+      client_id:
+      encryption_key_file:
+    newebpay:
+      base_url: ""
+      merchant_id: ""
+      hash_key: ""
+      hash_iv: ""
+      default_ui_language: ""
+      return_url: ""
+      notify_url: ""
+      customer_url: ""
+      clientback_url: ""
+    redis:
+      host: "127.0.0.1"
+      port: 6379
+      username: ""
+      password: ""
+  auth:
+    xinchuan_auth:
+      id: 19
+      secret: "BFPUzx340IBP42I2pPgVvu52He2CXe6lMDLeLpDy"
+      base_url: "https://auth.xinchuan.tw/"
+      callback: "http://localhost:3000/auth/callback"
+    mobile_be_auth:
+      base_url: ""
+      secret:
+  database:
+    type: 'mysql'
+    name: 'tabloid'
+    username: 'root'
+    password: 'password'
+    host: '127.0.0.1'
+    port: 3306
+    query:
+      - 'charset=utf8mb4'
+      - 'parseTime=true'
+      - 'multiStatements=true'
+  storage:
+    disks:
+      - name: 'images'
+        driver: 'local'
+        dir: './storage/images'
+  cache:
+    engine: 'badger'
+    badger:
+      path: './cache/badger'
+      disable_log: true
+    redis:
+      host: ''
+      port:
+      username: ''
+      password: ''
+  messaging:
+    every8d:
+      username: ''
+      password: ''
+      base_url: ''
+    mailgun:
+      base_url: 'http://127.0.0.1:9005/v3/mg.hokishoptaiwan.com/'
+      api_key: 'super-secret-stuff'
+  log:
+    writers:
+      - name: 'Test'
+        driver: 'rotating-file'
+        filepath: './logs'
+        filename: 'example'
+      - name: "single-file"
+        driver: "single-file"
+        filepath: "./logs"
+        filename: "example"
+  localizer:
+    directory: "./locales" 
+    supported_languages:
+    - "en-US"
+    - "id-ID"
+  pushnotif:
+    onesignal:
+      customer:
+        base_url: "https://onesignal.com"
+        app_id: "abcd-efgh"
+        api_key: "secret"
+        android_channel_id: "abcd-efgh"
+      driver:
+        base_url: "https://onesignal.com"
+        app_id: "abcd-efgh"
+        api_key: "secret"
+        android_channel_id: "abcd-efgh"
+      merchant:
+        base_url: "https://onesignal.com"
+        app_id: "abcd-efgh"
+        api_key: "secret"
+        android_channel_id: "abcd-efgh"
+public:
+  attachment_disk_name: ""
+  debug: true
+  app_url: ''
+  prometheus_api_job_name: ""
+  upload_scribe_max_attempt: 10
+  max_radius_nearest_store: 10000
+  max_online_driver_inactive_time_second: 600
+  listen:
+    host: ''
+    port: 6004
+    enable_tls: false
+  migration:
+    version: 11
+    migrate: true
+    rollback_on_error: true
+    allow_drop: false
+  admin_chat:
+    auto_assign_interval: 1
+    max_chat_threshold: 1
+  fee:
+    app: 7
+    delivery_rate: 10
+  order:
+    max_active: 2
+    max_choose_driver_iter: 3
+    max_choose_driver_attempt: 10
+    rand_driver_count: 5
+    driver_score_rate_exp: 2
+    driver_max_rejection_daily: 2
+    driver_penalty_in_hours: 24
+    driver_score_order_count_exp: 2
+    driver_scores_cache_ttl: 300
+    nearest_driver_start_radius: 500
+    nearest_driver_radius_mult: 250
+    nearest_driver_max_radius: 5000
+    menu_commission_percentage: 20.0
+    merchant_confirm_countdown: 30
+    driver_confirm_countdown: 30
+  three_segment_barcode_config:
+    small_amount_contract_code: "XBN"
+    large_amount_contract_code: "XBO"
+    default_expiry_in_hours: 24
+    virtual_account_prefix: "997892"
+    timestamp_mode: "COPY"
+  nsq:
+    nsqd_host: "35.206.228.255:4150"
+    nsqlookupd_host: "35.206.228.255:4161"
+    max_concurrent: 2
+    consumers:
+      choose_driver:  
+        max_in_flight: 20
+        max_attempt: 10
+      update_user:  
+        max_in_flight: 20
+        max_attempt: 10
+      upload_scribe:  
+        max_in_flight: 20
+        max_attempt: 20
+      merchant_conf_check:  
+        max_in_flight: 20
+        max_attempt: 20
+      driver_conf_check:  
+        max_in_flight: 20
+        max_attempt: 20
+      admin_updated:
+        max_in_flight: 20
+        max_attempt: 20
+      address_assistance_request_updated:
+        max_in_flight: 20
+        max_attempt: 20
+      driver_topup_updated:
+        max_in_flight: 20
+        max_attempt: 20
+      driver_withdrawal_updated:
+        max_in_flight: 20
+        max_attempt: 20
+      merchant_withdrawal_updated:
+        max_in_flight: 20
+        max_attempt: 20
+      customer_updated:
+        max_in_flight: 20
+        max_attempt: 20
+      driver_updated:
+        max_in_flight: 20
+        max_attempt: 20
+      menu_updated:
+        max_in_flight: 20
+        max_attempt: 20
+      merchant_updated:
+        max_in_flight: 20
+        max_attempt: 20
+      store_updated:
+        max_in_flight: 20
+        max_attempt: 20
+      order_updated:
+        max_in_flight: 20
+        max_attempt: 20
