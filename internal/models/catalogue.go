@@ -341,7 +341,7 @@ func (p *Catalogue) Delete(tx database.TxQueryer) error {
 func GetCatalogues(db database.Queryer, limit, offset int, sortBy, order, filterBy, filterValue string) ([]Catalogue, int, error) {
 	Catalogues := []Catalogue{}
 	baseQuery := `
-       SELECT catalogues.id, catalogues.name, catalogues.brand_id, brands.name AS brand_name, catalogues.specifications, catalogues.price, catalogues.created_at, catalogues.updated_at, catalogues.deleted_at, catalogues.published_at 
+       SELECT catalogues.id, catalogues.name, catalogues.brand_id, catalogues.image_url, brands.name AS brand_name, catalogues.specifications, catalogues.price, catalogues.created_at, catalogues.updated_at, catalogues.deleted_at, catalogues.published_at 
        FROM catalogues 
        JOIN brands ON catalogues.brand_id = brands.id
        WHERE catalogues.deleted_at IS NULL
