@@ -3,6 +3,7 @@ package controller
 import (
 	"be20250107/internal/app"
 	controllers "be20250107/internal/controllers"
+	"be20250107/internal/responses"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -22,7 +23,6 @@ type CatalogueController struct {
 func NewCatalogueController(app *app.Registry) *CatalogueController {
 	return &CatalogueController{controllers.Controller{App: app}}
 }
-
 func (c *CatalogueController) GetCatalogues(w http.ResponseWriter, r *http.Request) {
 	limitStr := r.URL.Query().Get("limit")
 	offsetStr := r.URL.Query().Get("offset")
@@ -47,12 +47,27 @@ func (c *CatalogueController) GetCatalogues(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	response := map[string]interface{}{
-		"Catalogues":  Catalogues,
-		"total_count": totalCount,
+	hasNext := false
+	if totalCount > offset+limit {
+		hasNext = true
 	}
 
-	render.JSON(w, r, response)
+	newOffset := offset + limit
+
+	if err = responses.JSON(w, 200, struct {
+		Data       []models.Catalogue           `json:"data"`
+		Pagination controllers.PaginationDetail `json:"pagination"`
+	}{
+		Data: Catalogues,
+		Pagination: controllers.PaginationDetail{
+			NextPageCursor: strconv.Itoa(newOffset),
+			PerPage:        limit,
+			Asc:            true, // Adjust if you want to support ascending/descending
+			HasNext:        hasNext,
+		},
+	}); err != nil {
+		panic(err)
+	}
 }
 
 // GetCatalogue retrieves a single Catalogue record by ID
