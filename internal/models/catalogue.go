@@ -341,7 +341,7 @@ func (p *Catalogue) Delete(tx database.TxQueryer) error {
 func GetCatalogues(db database.Queryer, limit, offset int, sortBy, order, filterBy, filterValue string) ([]Catalogue, int, error) {
 	Catalogues := []Catalogue{}
 	baseQuery := `
-       SELECT catalogues.id, catalogues.name, catalogues.brand_id, catalogues.image_url, brands.name AS brand_name, catalogues.specifications, catalogues.price, catalogues.created_at, catalogues.updated_at, catalogues.deleted_at, catalogues.published_at 
+       SELECT catalogues.id, catalogues.name, catalogues.brand_id,  brands.name AS brand_name, catalogues.specifications,catalogues.image_url, catalogues.price, catalogues.created_at, catalogues.updated_at, catalogues.deleted_at, catalogues.published_at 
        FROM catalogues 
        JOIN brands ON catalogues.brand_id = brands.id
        WHERE catalogues.deleted_at IS NULL
@@ -385,7 +385,7 @@ func GetCatalogues(db database.Queryer, limit, offset int, sortBy, order, filter
 		// Unmarshal the JSON stored in the 'specifications' field.
 		err = json.Unmarshal([]byte(specifications), &c.Specifications)
 		if err != nil {
-			return nil, 0, fmt.Errorf("[GetCatalogues][Unmarshal Specifications]%w", err)
+			return nil, 0, fmt.Errorf("[GetCatalogues][Unmarshal Specifications]%w", &c.Specifications)
 		}
 
 		categories, err := GetCategoriesForCatalogue(db, c.ID)
