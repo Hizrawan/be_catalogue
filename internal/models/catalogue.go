@@ -377,7 +377,7 @@ func GetCatalogues(db database.Queryer, limit, offset int, sortBy, order, filter
 	for rows.Next() {
 		var c Catalogue
 		var specifications string
-		err := rows.Scan(&c.ID, &c.Name, &c.BrandID, &c.BrandName, &specifications, &c.Price, &c.CreatedAt, &c.UpdatedAt, &c.DeletedAt, &c.PublishedAt)
+		err := rows.Scan(&c.ID, &c.Name, &c.BrandID, &c.BrandName, &specifications, &c.ImageURL, &c.Price, &c.CreatedAt, &c.UpdatedAt, &c.DeletedAt, &c.PublishedAt)
 		if err != nil {
 			return nil, 0, fmt.Errorf("[GetCatalogues][Scan]%w", err)
 		}
